@@ -1,0 +1,12 @@
+node_modules/
+frontend/dist/
+backend/static/
+data/
+*.db
+*.db-shm
+*.db-wal
+secret.key
+.env
+__pycache__/
+.pytest_cache/
+*.tsbuildinfo

@@ -1,0 +1,43 @@
+# Pactole — gestion de comptes bancaires auto-hébergée
+#   docker compose up -d            → SQLite (par défaut)
+#   docker compose --profile postgres up -d   → avec PostgreSQL (voir .env.example)
+services:
+  pactole:
+    build: .
+    image: pactole:latest
+    container_name: pactole
+    restart: unless-stopped
+    ports:
+      - "${PACTOLE_PORT:-8080}:8080"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      PACTOLE_PUBLIC_URL: ${PACTOLE_PUBLIC_URL:-http://localhost:8080}
+    volumes:
+      - pactole-data:/data
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  postgres:
+    image: postgres:17-alpine
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pactole
+      POSTGRES_USER: pactole
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - pactole-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pactole"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  pactole-data:
+  pactole-pg:
