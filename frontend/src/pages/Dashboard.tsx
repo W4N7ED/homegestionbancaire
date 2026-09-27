@@ -69,9 +69,14 @@ export function Dashboard() {
               <div className="num font-medium">{eur(r.reste_a_vivre, { decimals: false })}</div>
             </div>
           </div>
-          <Link to="/reste-a-vivre" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-ink hover:underline">
-            Détail du calcul <ArrowRight size={14} />
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1">
+            <Link to="/reste-a-vivre" className="inline-flex items-center gap-1 text-sm font-medium text-accent-ink hover:underline">
+              Détail du calcul <ArrowRight size={14} />
+            </Link>
+            <Link to="/simulateur" className="inline-flex items-center gap-1 text-sm font-medium text-accent-ink hover:underline">
+              Simuler un achat <ArrowRight size={14} />
+            </Link>
+          </div>
         </section>
         <div className="grid grid-cols-2 gap-5 lg:grid-cols-4 xl:grid-cols-2">
           <Stat label="Solde des comptes courants" icon={Wallet} value={eur(data.balances.liquid)} hint={`${data.accounts.filter((a) => a.type === "courant").length} compte(s) courant(s)`} tone={data.balances.liquid < 0 ? "critical" : undefined} />

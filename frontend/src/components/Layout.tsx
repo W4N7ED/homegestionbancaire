@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
 import {
   LayoutDashboard, Scale, TrendingUp, CalendarDays, Wallet, ArrowLeftRight, Landmark, Gauge, Repeat, FileSignature,
-  Banknote, Receipt, Fuel, FolderLock, Calculator, Target, Settings, LogOut, Sun, Moon, Monitor, Menu, X, RefreshCw,
+  Banknote, HandCoins, Receipt, Fuel, FolderLock, Calculator, Target, Settings, LogOut, Sun, Moon, Monitor, Menu, X, RefreshCw,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { cx } from "./ui";
@@ -15,6 +15,7 @@ const NAV: { title: string; items: { to: string; label: string; icon: typeof Wal
       { to: "/reste-a-vivre", label: "Reste à vivre", icon: Scale },
       { to: "/previsionnel", label: "Prévisionnel", icon: TrendingUp },
       { to: "/echeancier", label: "Échéancier", icon: CalendarDays },
+      { to: "/simulateur", label: "Simulateur d'achat", icon: HandCoins },
     ],
   },
   {

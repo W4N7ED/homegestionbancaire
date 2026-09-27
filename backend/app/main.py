@@ -16,7 +16,7 @@ from . import __version__
 from .config import STATIC_DIR, SYNC_HOUR
 from .db import Base, SessionLocal, engine
 from .models import Account
-from .routers import accounts, admin, auth, banking, dashboard, documents, planning, records, transactions
+from .routers import accounts, admin, auth, banking, dashboard, documents, planning, records, simulate, transactions
 from .security import current_user
 from .services.categorize import seed_categories
 from .services.sync import sync_all
@@ -50,7 +50,7 @@ app = FastAPI(title="Pactole", version=__version__, lifespan=lifespan, docs_url=
 protected = [Depends(current_user)]
 app.include_router(auth.router)
 app.include_router(banking.router)  # gère lui-même l'authentification (callback public)
-for r in (accounts.router, transactions.router, documents.router, dashboard.router, admin.router, *planning.routers, *records.routers):
+for r in (accounts.router, transactions.router, simulate.router, documents.router, dashboard.router, admin.router, *planning.routers, *records.routers):
     app.include_router(r, dependencies=protected)
 
 

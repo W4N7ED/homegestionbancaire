@@ -184,37 +184,50 @@ def variable_daily_spend(db: Session, today: date | None = None) -> float:
     return round(total / span, 2)
 
 
-def forecast(db: Session, days: int = 60, include_variable: bool = True, today: date | None = None) -> dict:
+def forecast_inputs(db: Session, days: int, include_variable: bool = True, today: date | None = None) -> tuple[float, float, dict[date, float]]:
+    """Solde de départ, dépense courante journalière et mouvements prévus par jour."""
     today = today or date.today()
     start_balance = sum(a.balance for a in _accounts(db, LIQUID_TYPES))
     daily_var = variable_daily_spend(db, today) if include_variable else 0.0
     cache: dict = {}
-    items = [
-        i
-        for i in scheduled_items(db, today, today + timedelta(days=days))
-        if not (i.date <= today + timedelta(days=6) and _is_paid(db, i, today, cache))
-    ]
     by_day: dict[date, float] = defaultdict(float)
-    for i in items:
-        by_day[i.date] += i.amount
+    for i in scheduled_items(db, today, today + timedelta(days=days)):
+        if not (i.date <= today + timedelta(days=6) and _is_paid(db, i, today, cache)):
+            by_day[i.date] += i.amount
+    return start_balance, daily_var, by_day
+
+
+def project(start_balance: float, daily_var: float, by_day: dict[date, float], today: date, days: int,
+            extra: dict[date, float] | None = None) -> dict:
+    """Projette le solde jour par jour ; `extra` ajoute des mouvements hypothétiques."""
     series = []
     bal = start_balance
     lowest = (today.isoformat(), round(bal, 2))
+    first_negative = None
     for n in range(days + 1):
         d = today + timedelta(days=n)
-        bal += by_day.get(d, 0.0)
+        bal += by_day.get(d, 0.0) + (extra.get(d, 0.0) if extra else 0.0)
         if n > 0:
             bal -= daily_var
         series.append({"date": d.isoformat(), "balance": round(bal, 2)})
         if bal < lowest[1]:
             lowest = (d.isoformat(), round(bal, 2))
+        if bal < 0 and first_negative is None:
+            first_negative = d.isoformat()
     return {
         "start_balance": round(start_balance, 2),
         "daily_variable": daily_var,
         "series": series,
         "lowest": {"date": lowest[0], "balance": lowest[1]},
         "end_balance": series[-1]["balance"],
+        "first_negative": first_negative,
     }
+
+
+def forecast(db: Session, days: int = 60, include_variable: bool = True, today: date | None = None) -> dict:
+    today = today or date.today()
+    start, daily_var, by_day = forecast_inputs(db, days, include_variable, today)
+    return project(start, daily_var, by_day, today, days)
 
 
 def monthly_income_estimate(db: Session, breakdown: dict, today: date) -> tuple[float, str]:

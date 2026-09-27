@@ -162,3 +162,42 @@ export function CapitalChart({ rows, today, height = 220 }: { rows: { date: stri
     </ResponsiveContainer>
   );
 }
+
+/** Solde prévu sans l'achat (référence) et avec le scénario sélectionné. */
+export function ScenarioChart({ baseline, scenario, label, height = 300 }: { baseline: { date: string; balance: number }[]; scenario: { date: string; balance: number }[]; label: string; height?: number }) {
+  const step = Math.max(1, Math.ceil(baseline.length / 360));
+  const data = baseline
+    .map((b, i) => ({ date: b.date, base: b.balance, scen: scenario[i]?.balance }))
+    .filter((_, i) => i % step === 0 || i === baseline.length - 1);
+  const min = Math.min(...data.map((d) => Math.min(d.base, d.scen ?? d.base)));
+  return (
+    <div>
+      <div className="mb-3"><Legend items={[{ label: "Sans l'achat", color: "var(--axis)" }, { label: `Avec l'achat — ${label}`, color: "var(--s1)" }]} /></div>
+      <ResponsiveContainer width="100%" height={height}>
+        <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <CartesianGrid vertical={false} stroke="var(--grid)" />
+          <XAxis dataKey="date" {...AXIS} tickFormatter={(d) => fdate(String(d)).slice(3)} minTickGap={48} />
+          <YAxis {...AXIS} axisLine={false} width={52} tickFormatter={(v) => compact(v)} />
+          {min < 0 && <ReferenceLine y={0} stroke="var(--critical)" strokeWidth={1} />}
+          <Tooltip
+            cursor={{ stroke: "var(--axis)" }}
+            content={({ active, payload, label: l }) =>
+              active && payload?.length ? (
+                <TipBox
+                  title={fdate(String(l), "day")}
+                  rows={[
+                    { label: "Sans l'achat", value: eur(Number(payload[0]?.payload.base)), color: "var(--axis)" },
+                    { label: "Avec l'achat", value: eur(Number(payload[0]?.payload.scen)), color: "var(--s1)" },
+                    { label: "Écart", value: eur(Number(payload[0]?.payload.scen) - Number(payload[0]?.payload.base)) },
+                  ]}
+                />
+              ) : null
+            }
+          />
+          <Line type="monotone" dataKey="base" stroke="var(--axis)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface)" }} isAnimationActive={false} />
+          <Area type="monotone" dataKey="scen" stroke="var(--s1)" strokeWidth={2} fill="var(--s1)" fillOpacity={0.08} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface)" }} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

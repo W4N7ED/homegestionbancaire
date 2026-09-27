@@ -145,3 +145,29 @@ def test_enablebanking_jwt(client):
 def test_callback_rejects_unknown_state(client):
     r = client.get("/api/banking/callback?state=inconnu&code=x", follow_redirects=False)
     assert r.status_code in (302, 307) and "/banques?error=" in r.headers["location"]
+
+
+def test_purchase_simulator(client):
+    from app.services.simulate import installments
+
+    rows = installments(1000, 4, 0, 2.2, date(2026, 10, 1))
+    assert [r["date"] for r in rows] == ["2026-10-01", "2026-11-01", "2026-12-01", "2027-01-01"]
+    assert round(sum(r["amount"] for r in rows), 2) == 1022.0  # 1000 € + 2,2 % de frais
+    rows = installments(1000, 3, 0, 0, date(2026, 10, 1))
+    assert round(sum(r["amount"] for r in rows), 2) == 1000.0  # arrondis absorbés par la dernière échéance
+
+    res = client.post("/api/simulate/purchase", json={
+        "amount": 1500,
+        "scenarios": [{"count": 1}, {"count": 4, "fees_pct": 2.2}, {"count": 12, "rate": 5.9}, {"count": 24, "rate": 5.9}],
+    }).json()
+    by = {s["count"]: s for s in res["scenarios"]}
+    assert by[1]["extra_cost"] == 0 and by[1]["installment"] == 1500
+    assert by[4]["extra_cost"] == 33.0
+    assert 0 < by[12]["extra_cost"] < by[24]["extra_cost"]
+    assert by[24]["installment"] < by[12]["installment"] < by[4]["installment"]
+    assert by[12]["first_date"] > res["purchase_date"]  # crédit : 1re échéance le mois suivant
+    assert by[24]["debt_ratio_after"] > res["debt_ratio"]
+    # le comptant fait plonger le solde plus bas que le 24x à court terme
+    assert by[1]["lowest"]["balance"] <= by[24]["lowest"]["balance"]
+    assert len(by[24]["series"]) == len(res["baseline"]["series"])
+    assert res["recommended"] in {s["label"] for s in res["scenarios"]}

@@ -14,6 +14,7 @@ import { BanksPage } from "./pages/Banks";
 import { ContractsPage, GoalsPage, LoansPage, RecurringPage } from "./pages/Commitments";
 import { DocumentsPage, FuelPage, PayslipsPage } from "./pages/Records";
 import { TaxesPage } from "./pages/Taxes";
+import { SimulatorPage } from "./pages/Simulator";
 import { SettingsPage } from "./pages/Settings";
 
 type Auth = { setup_required: boolean; authenticated: boolean; username: string | null };
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/reste-a-vivre" element={<ResteAVivrePage />} />
             <Route path="/previsionnel" element={<ForecastPage />} />
             <Route path="/echeancier" element={<CalendarPage />} />
+            <Route path="/simulateur" element={<SimulatorPage />} />
             <Route path="/comptes" element={<AccountsPage />} />
             <Route path="/operations" element={<TransactionsPage />} />
             <Route path="/budgets" element={<BudgetsPage />} />

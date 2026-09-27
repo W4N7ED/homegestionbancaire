@@ -12,6 +12,7 @@ Open Banking (DSP2).
 | **Tableau de bord** | Reste à vivre jusqu'à la prochaine paie, soldes, épargne, charges fixes, capital restant dû, courbe du solde (90 j réels + 60 j prévus), revenus/dépenses sur 12 mois, dépenses par catégorie vs budget, prochaines échéances, alertes |
 | **Reste à vivre** | Revenus − (prélèvements + abonnements + crédits), charges annuelles mensualisées, reste à vivre après épargne, **taux d'endettement** (seuil HCSF 35 %) |
 | **Prévisionnel** | Projection du solde à 30 j / 3 mois / 6 mois / 1 an à partir des échéances connues et des dépenses courantes moyennes ; détection du découvert |
+| **Simulateur d'achat** | « Et si j'achetais… » : compare comptant, 3x/4x (avec frais), 10x, 12x, 24x, 36x ou n mensualités (avec TAEG) — mensualité, coût total et surcoût, reste à vivre et taux d'endettement pendant le remboursement, **solde prévu avec et sans l'achat**, alerte de découvert, mode conseillé ; « Planifier » ajoute l'achat à l'échéancier |
 | **Échéancier** | Calendrier mensuel de toutes les entrées/sorties prévues |
 | **Comptes & opérations** | Comptes synchronisés ou manuels, recherche, filtres, catégorisation automatique par règles (« mémoriser ce choix »), catégorisation en masse, export CSV |
 | **Import de relevés** | CSV Revolut (le compte courant est isolé des coffres), CSV des banques françaises (`;`, virgule décimale, Windows-1252), OFX/QFX ; dédoublonnage à chaque réimport |
