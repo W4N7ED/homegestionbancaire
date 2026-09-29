@@ -8,7 +8,7 @@ export interface FieldDef {
   key: string;
   label: string;
   type?: "text" | "number" | "date" | "month" | "select" | "textarea" | "toggle" | "color" | "password";
-  options?: Option[] | Record<string, string>;
+  options?: Option[] | Record<string, string> | ((values: Record<string, unknown>) => Option[]);
   required?: boolean;
   step?: string;
   hint?: string;
@@ -18,8 +18,9 @@ export interface FieldDef {
   show?: (values: Record<string, unknown>) => boolean;
 }
 
-function toOptions(o: FieldDef["options"]): Option[] {
+function toOptions(o: FieldDef["options"], values: Record<string, unknown>): Option[] {
   if (!o) return [];
+  if (typeof o === "function") return o(values);
   return Array.isArray(o) ? o : Object.entries(o).map(([value, label]) => ({ value, label }));
 }
 
@@ -54,7 +55,7 @@ export function FormFields({ fields, values, onChange }: { fields: FieldDef[]; v
           control = (
             <select className="input" value={inputValue(f, v)} required={f.required} onChange={(e) => onChange(f.key, e.target.value)}>
               {!f.required && <option value="">—</option>}
-              {toOptions(f.options).map((o) => (
+              {toOptions(f.options, values).map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>

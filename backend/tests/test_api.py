@@ -171,3 +171,25 @@ def test_purchase_simulator(client):
     assert by[1]["lowest"]["balance"] <= by[24]["lowest"]["balance"]
     assert len(by[24]["series"]) == len(res["baseline"]["series"])
     assert res["recommended"] in {s["label"] for s in res["scenarios"]}
+
+
+def test_crud_create_and_update(client):
+    """Création / modification via les routes CRUD génériques (corps JSON)."""
+    today = date.today().isoformat()
+    cases = {
+        "/api/recurring": {"name": "Salaire test", "kind": "income", "amount": 2072, "frequency": "monthly", "start_date": today, "end_date": None, "match_pattern": "paie", "active": True},
+        "/api/contracts": {"name": "Box", "amount": 29.99, "frequency": "monthly", "start_date": today},
+        "/api/loans": {"name": "Prêt", "principal": 5000, "rate": 3.5, "duration_months": 24, "start_date": today},
+        "/api/payslips": {"employer": "Test SA", "period": "2020-01-01", "gross": 3000, "net_before_tax": 2350, "net_taxable": 2400, "net_paid": 2300},
+        "/api/vehicles": {"name": "Clio", "fiscal_hp": 4},
+        "/api/fuel": {"date": today, "station": "Total", "liters": 40, "total": 70},
+        "/api/goals": {"name": "Vacances", "target": 2000},
+        "/api/categories": {"name": "Animaux", "kind": "expense"},
+    }
+    for url, body in cases.items():
+        r = client.post(url, json=body)
+        assert r.status_code == 201, (url, r.text)
+        item = r.json()
+        r = client.put(f"{url}/{item['id']}", json={**body, "name": body.get("name", "x") + " 2"} if "name" in body else body)
+        assert r.status_code == 200, (url, r.text)
+    assert client.get("/api/fuel").json()[0]["price_per_liter"] == 1.75

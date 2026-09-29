@@ -1,5 +1,8 @@
-"""Fabrique de routes CRUD génériques."""
-from __future__ import annotations
+"""Fabrique de routes CRUD génériques.
+
+Pas de `from __future__ import annotations` ici : FastAPI doit voir la classe réelle de
+`schema_in` dans la signature des routes, sinon le corps JSON n'est pas reconnu.
+"""
 
 from collections.abc import Callable
 

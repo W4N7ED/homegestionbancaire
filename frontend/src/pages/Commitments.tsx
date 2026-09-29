@@ -39,9 +39,16 @@ export function RecurringPage() {
     { key: "amount", label: "Montant", type: "number", required: true },
     { key: "frequency", label: "Fréquence", type: "select", options: FREQUENCIES, required: true },
     { key: "start_date", label: "Première échéance", type: "date", required: true, hint: "Détermine le jour de passage." },
-    { key: "end_date", label: "Dernière échéance", type: "date" },
+    { key: "end_date", label: "Dernière échéance (facultatif)", type: "date", hint: "Laisser vide si sans fin (salaire, loyer…)." },
     { key: "account_id", label: "Compte", type: "select", options: accounts.map((a) => ({ value: a.id, label: a.name })) },
-    { key: "category_id", label: "Catégorie", type: "select", options: categories.map((c) => ({ value: c.id, label: c.name })) },
+    {
+      key: "category_id", label: "Catégorie", type: "select",
+      // catégories correspondant à la nature choisie (revenu → Salaire, Aides… ; épargne → Épargne…)
+      options: (v) => {
+        const want = v.kind === "income" ? "income" : v.kind === "transfer" || v.kind === "savings" ? "transfer" : "expense";
+        return categories.filter((c) => c.kind === want).map((c) => ({ value: c.id, label: c.name }));
+      },
+    },
     { key: "match_pattern", label: "Mot-clé de rapprochement", hint: "Mots présents dans le libellé bancaire (ex. « edf »). Permet de savoir si l'échéance est déjà passée.", full: true },
     { key: "active", label: "Active", type: "toggle" },
     { key: "notes", label: "Notes", type: "textarea" },
