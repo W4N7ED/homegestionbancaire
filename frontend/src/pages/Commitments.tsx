@@ -45,7 +45,7 @@ export function RecurringPage() {
       key: "category_id", label: "Catégorie", type: "select",
       // catégories correspondant à la nature choisie (revenu → Salaire, Aides… ; épargne → Épargne…)
       options: (v) => {
-        const want = v.kind === "income" ? "income" : v.kind === "transfer" || v.kind === "savings" ? "transfer" : "expense";
+        const want = v.kind === "income" ? "income" : v.kind === "savings" ? "transfer" : "expense";
         return categories.filter((c) => c.kind === want).map((c) => ({ value: c.id, label: c.name }));
       },
     },
@@ -68,8 +68,8 @@ export function RecurringPage() {
   const items = (data ?? []).filter((r) => filter === "all" || (filter === "in" ? r.kind === "income" : r.kind !== "income"));
   const active = (data ?? []).filter((r) => r.active);
   const monthlyIn = active.filter((r) => r.kind === "income").reduce((s, r) => s + r.monthly, 0);
-  const monthlyOut = active.filter((r) => r.kind !== "income" && r.kind !== "savings" && r.kind !== "transfer").reduce((s, r) => s + r.monthly, 0);
-  const monthlySave = active.filter((r) => r.kind === "savings" || r.kind === "transfer").reduce((s, r) => s + r.monthly, 0);
+  const monthlyOut = active.filter((r) => r.kind !== "income" && r.kind !== "savings").reduce((s, r) => s + r.monthly, 0);
+  const monthlySave = active.filter((r) => r.kind === "savings").reduce((s, r) => s + r.monthly, 0);
 
   return (
     <div>
@@ -80,8 +80,8 @@ export function RecurringPage() {
       />
       <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <Stat label="Revenus récurrents / mois" value={eur(monthlyIn)} />
-        <Stat label="Prélèvements & dépenses / mois" value={eur(monthlyOut)} />
-        <Stat label="Épargne & virements / mois" value={eur(monthlySave)} />
+        <Stat label="Loyer, prélèvements & virements / mois" value={eur(monthlyOut)} />
+        <Stat label="Épargne programmée / mois" value={eur(monthlySave)} />
       </div>
 
       {sugg && sugg.length > 0 && (

@@ -193,3 +193,23 @@ def test_crud_create_and_update(client):
         r = client.put(f"{url}/{item['id']}", json={**body, "name": body.get("name", "x") + " 2"} if "name" in body else body)
         assert r.status_code == 200, (url, r.text)
     assert client.get("/api/fuel").json()[0]["price_per_liter"] == 1.75
+
+
+def test_reste_a_vivre_includes_rent_transfers_and_loans(client):
+    before = client.get("/api/reste-a-vivre").json()
+    today = date.today().isoformat()
+    r = client.post("/api/recurring", json={"name": "Loyer appartement", "kind": "transfer", "amount": 650, "frequency": "monthly", "start_date": today})
+    assert r.status_code == 201
+    after = client.get("/api/reste-a-vivre").json()
+    # un loyer payé par virement permanent est une charge, pas de l'épargne
+    assert round(after["charges_monthly"] - before["charges_monthly"], 2) == 650
+    assert after["breakdown"]["savings"] == before["breakdown"]["savings"]
+    assert round(before["reste_a_vivre"] - after["reste_a_vivre"], 2) == 650
+    groups = {i["name"]: i["group"] for i in after["items"]}
+    assert groups["Loyer appartement"] == "housing"
+    assert any(i["source"] == "loan" for i in after["items"])
+    assert any(i["source"] == "contract" for i in after["items"])
+    b = after["breakdown"]
+    assert round(b["housing"] + b["debits"] + b["contracts"] + sum(i["monthly"] for i in after["items"] if i["group"] == "loans"), 2) == after["charges_monthly"]
+    assert "undeclared" in after and "reste_a_vivre_if_undeclared" in after
+    client.delete(f"/api/recurring/{r.json()['id']}")

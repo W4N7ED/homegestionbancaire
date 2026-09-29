@@ -81,8 +81,8 @@ export const RECURRING_KINDS: Record<string, string> = {
   income: "Revenu",
   direct_debit: "Prélèvement",
   expense: "Dépense",
-  transfer: "Virement permanent",
-  savings: "Épargne programmée",
+  transfer: "Virement permanent (loyer…)",
+  savings: "Épargne programmée (vers mon épargne)",
 };
 
 export const ACCOUNT_TYPES: Record<string, string> = {

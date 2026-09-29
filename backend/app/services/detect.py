@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import Contract, Loan, Recurring, Transaction
-from .categorize import normalize
+from .categorize import normalize, pattern_matches
 from .schedule import MONTH_STEP
 
 # (fréquence, intervalle min, intervalle max en jours)
@@ -57,7 +57,8 @@ def detect_recurring(db: Session, today: date | None = None) -> list[dict]:
 
     suggestions = []
     for (key, is_income), items in groups.items():
-        if any(k in key or key in k for k in known):
+        # déjà déclaré : le mot-clé d'une échéance/contrat/crédit correspond à ces opérations
+        if any(k in key or key in k or pattern_matches(k, items[-1].label, items[-1].counterparty) for k in known):
             continue
         # une seule opération par jour et par groupe
         by_day = {}

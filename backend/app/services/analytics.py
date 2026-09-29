@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..models import Account, BankConnection, Category, Contract, Loan, Payslip, Recurring, Transaction
 from .categorize import pattern_matches
 from .loans import loan_end_date, loan_status
-from .schedule import ScheduledItem, fixed_monthly_breakdown, occurrences, scheduled_items
+from .schedule import ScheduledItem, fixed_items, fixed_monthly_breakdown, monthly_equivalent, occurrences, scheduled_items
 
 LIQUID_TYPES = ("courant", "especes")
 SAVINGS_TYPES = ("epargne", "investissement")
@@ -243,7 +243,7 @@ def monthly_income_estimate(db: Session, breakdown: dict, today: date) -> tuple[
     return 0.0, "aucun revenu renseigné"
 
 
-def reste_a_vivre(db: Session, today: date | None = None) -> dict:
+def reste_a_vivre(db: Session, today: date | None = None, details: bool = False) -> dict:
     today = today or date.today()
     b = fixed_monthly_breakdown(db, today)
     income, income_source = monthly_income_estimate(db, b, today)
@@ -269,7 +269,23 @@ def reste_a_vivre(db: Session, today: date | None = None) -> dict:
 
     ms = month_start(today)
     month_tx = _flows(db, ms, today)
-    return {
+    extra: dict = {}
+    if details:
+        from .detect import detect_recurring  # import local : detect importe schedule
+
+        undeclared = [
+            {**sg, "monthly": round(monthly_equivalent(sg["median_amount"], sg["frequency"]), 2)}
+            for sg in detect_recurring(db, today)
+            if sg["kind"] != "income"
+        ]
+        undeclared_monthly = round(sum(u["monthly"] for u in undeclared), 2)
+        extra = {
+            "items": fixed_items(db, today),
+            "undeclared": undeclared,
+            "undeclared_monthly": undeclared_monthly,
+            "reste_a_vivre_if_undeclared": round(rav - undeclared_monthly, 2),
+        }
+    return extra | {
         "income_monthly": round(income, 2),
         "income_source": income_source,
         "charges_monthly": b["charges"],

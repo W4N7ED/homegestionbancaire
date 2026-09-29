@@ -86,7 +86,11 @@ export interface ResteAVivre {
   income_monthly: number;
   income_source: string;
   charges_monthly: number;
-  breakdown: { income: number; charges: number; savings: number; loans: number; contracts: number; recurring_expenses: number };
+  breakdown: { income: number; charges: number; savings: number; loans: number; contracts: number; recurring_expenses: number; housing: number; debits: number };
+  items?: FixedItem[];
+  undeclared?: Undeclared[];
+  undeclared_monthly?: number;
+  reste_a_vivre_if_undeclared?: number;
   reste_a_vivre: number;
   reste_a_vivre_after_savings: number;
   per_day: number;
@@ -104,6 +108,24 @@ export interface ResteAVivre {
     month_income: number;
     month_spent: number;
   };
+}
+
+export interface FixedItem {
+  name: string;
+  source: "recurring" | "contract" | "loan";
+  id: number;
+  kind: string;
+  category: string | null;
+  amount: number;
+  frequency: string;
+  monthly: number;
+  group: "income" | "housing" | "debits" | "contracts" | "loans" | "savings";
+}
+
+export interface Undeclared {
+  key: string; name: string; kind: string; amount: number; median_amount: number; variable: boolean; frequency: string;
+  occurrences: number; last_date: string; start_date: string; account_id: number; category_id: number | null;
+  match_pattern: string; sample_label: string; monthly: number;
 }
 
 export interface Forecast {

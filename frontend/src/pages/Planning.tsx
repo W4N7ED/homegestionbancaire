@@ -1,58 +1,137 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { qs, useApi } from "../lib/api";
-import { eur, fdate, pct, relDays } from "../lib/format";
-import type { Forecast, ResteAVivre, ScheduledItem } from "../lib/types";
+import { Link } from "react-router";
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { api, qs, useApi } from "../lib/api";
+import { FREQUENCIES, RECURRING_KINDS, eur, fdate, pct, relDays } from "../lib/format";
+import type { FixedItem, Forecast, ResteAVivre, ScheduledItem, Undeclared } from "../lib/types";
 import { BalanceChart } from "../components/Charts";
-import { Amount, Badge, Card, ErrorBox, Loading, Meter, PageHeader, Segmented, Stat, Toggle, cx } from "../components/ui";
+import { Amount, Badge, Button, Card, ErrorBox, Loading, Meter, PageHeader, Segmented, Stat, Toggle, cx } from "../components/ui";
 import { UpcomingList } from "./Dashboard";
 
 // ── Reste à vivre ─────────────────────────────────────────────────────────────
+const GROUPS: { key: FixedItem["group"]; label: string; link: string }[] = [
+  { key: "housing", label: "Logement (loyer, prêt immobilier, charges)", link: "/recurrents" },
+  { key: "loans", label: "Crédits (assurance incluse)", link: "/credits" },
+  { key: "debits", label: "Prélèvements & virements permanents", link: "/recurrents" },
+  { key: "contracts", label: "Contrats & abonnements", link: "/contrats" },
+];
+
+const SOURCE_LINK = { recurring: "/recurrents", contract: "/contrats", loan: "/credits" } as const;
+
 export function ResteAVivrePage() {
-  const { data, error } = useApi<ResteAVivre>("/api/reste-a-vivre");
+  const { data, error, reload } = useApi<ResteAVivre>("/api/reste-a-vivre");
+  const [open, setOpen] = useState<Record<string, boolean>>({ housing: true, loans: true, debits: true, contracts: true });
+  const [adding, setAdding] = useState<string | null>(null);
   if (error) return <ErrorBox message={error} />;
   if (!data) return <Loading />;
   const b = data.breakdown;
-  const rows = [
-    { label: "Revenus mensuels", value: data.income_monthly, hint: data.income_source, sign: 1 },
-    { label: "Prélèvements & dépenses récurrentes", value: b.recurring_expenses, sign: -1 },
-    { label: "Contrats & abonnements", value: b.contracts, sign: -1 },
-    { label: "Mensualités de crédit (assurance incluse)", value: b.loans, sign: -1 },
-  ];
+  const items = data.items ?? [];
+  const incomes = items.filter((i) => i.group === "income");
+  const undeclared = data.undeclared ?? [];
   const ratio = data.debt_ratio ?? 0;
+
+  const addUndeclared = async (u: Undeclared) => {
+    setAdding(u.key);
+    try {
+      const created = await api.post<{ id: number }>("/api/recurring", {
+        name: u.name, kind: u.kind, amount: u.median_amount, frequency: u.frequency, start_date: u.start_date,
+        account_id: u.account_id, category_id: u.category_id, match_pattern: u.match_pattern, active: true,
+      });
+      await api.post(`/api/recurring/${created.id}/link`);
+      await reload();
+    } finally {
+      setAdding(null);
+    }
+  };
+
   return (
     <div>
-      <PageHeader title="Reste à vivre" subtitle="Ce qu'il vous reste une fois toutes les charges fixes payées." />
+      <PageHeader title="Reste à vivre" subtitle="Revenus − loyer − crédits − prélèvements − abonnements : ce qu'il reste pour vivre chaque mois." />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Stat label="Reste à vivre mensuel" value={eur(data.reste_a_vivre)} hint={`${eur(data.per_day)} par jour en moyenne`} tone={data.reste_a_vivre < 0 ? "critical" : undefined} />
         <Stat label="Après épargne programmée" value={eur(data.reste_a_vivre_after_savings)} hint={`${eur(b.savings)} épargnés chaque mois`} />
         <Stat label={`Jusqu'au ${fdate(data.current.horizon)}`} value={eur(data.current.available)} hint={`${eur(data.current.per_day)}/jour pendant ${data.current.days_left} j (${data.current.horizon_reason})`} tone={data.current.available < 0 ? "critical" : undefined} />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <Card title="Calcul mensuel (charges mensualisées)">
-          <table className="table">
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.label}>
-                  <td>
-                    {r.label}
-                    {r.hint && <div className="text-xs text-muted">{r.hint}</div>}
-                  </td>
-                  <td className="num text-right font-medium">{r.sign < 0 ? "−" : "+"}{eur(r.value)}</td>
-                </tr>
-              ))}
-              <tr>
-                <td className="font-semibold">Reste à vivre</td>
-                <td className={cx("num text-right text-lg font-semibold", data.reste_a_vivre < 0 && "text-critical-ink")}>{eur(data.reste_a_vivre)}</td>
-              </tr>
-              <tr>
-                <td className="text-ink-2">Épargne programmée</td>
-                <td className="num text-right text-ink-2">−{eur(b.savings)}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="mt-3 text-xs text-muted">Les charges annuelles, trimestrielles… sont ramenées au mois (ex. assurance habitation annuelle ÷ 12).</p>
+      {undeclared.length > 0 && (
+        <Card
+          className="mt-5"
+          title={<span className="flex items-center gap-2"><AlertTriangle size={16} className="text-[var(--warning)]" />Prélèvements détectés sur vos comptes mais pas encore comptés</span>}
+          action={<span className="text-sm text-ink-2">−{eur(data.undeclared_monthly ?? 0)}/mois → reste à vivre <span className="num font-semibold text-ink">{eur(data.reste_a_vivre_if_undeclared ?? data.reste_a_vivre)}</span></span>}
+        >
+          <ul className="divide-y divide-line">
+            {undeclared.map((u) => (
+              <li key={u.key} className="flex flex-wrap items-center gap-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{u.name} <span className="text-xs font-normal text-muted">« {u.sample_label} »</span></div>
+                  <div className="text-xs text-muted">{FREQUENCIES[u.frequency]} · {u.occurrences} fois · dernier le {fdate(u.last_date)}{u.variable && " · montant variable"}</div>
+                </div>
+                <span className="num text-sm">−{eur(u.median_amount)}{u.frequency !== "monthly" && <span className="text-muted"> ({eur(u.monthly)}/mois)</span>}</span>
+                <Button size="sm" icon={Plus} loading={adding === u.key} onClick={() => addUndeclared(u)}>Compter</Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_1fr]">
+        <Card title="Détail du calcul (montants ramenés au mois)" pad={false}>
+          <div className="px-5 pb-4">
+            <div className="flex items-center justify-between border-b border-line py-3">
+              <div>
+                <div className="font-medium">Revenus</div>
+                <div className="text-xs text-muted">{incomes.length ? incomes.map((i) => i.name).join(", ") : data.income_source}</div>
+              </div>
+              <span className="num font-semibold text-good-ink">+{eur(data.income_monthly)}</span>
+            </div>
+            {GROUPS.map((g) => {
+              const rows = items.filter((i) => i.group === g.key);
+              const sum = rows.reduce((s, i) => s + i.monthly, 0);
+              const isOpen = open[g.key];
+              return (
+                <div key={g.key} className="border-b border-line">
+                  <button type="button" onClick={() => setOpen({ ...open, [g.key]: !isOpen })} className="flex w-full items-center justify-between gap-3 py-3 text-left">
+                    <span className="flex items-center gap-2 font-medium">
+                      <ChevronRight size={15} className={cx("text-muted transition-transform", isOpen && "rotate-90")} />
+                      {g.label}
+                      <span className="text-xs font-normal text-muted">{rows.length}</span>
+                    </span>
+                    <span className="num font-semibold">{sum ? `−${eur(sum)}` : eur(0)}</span>
+                  </button>
+                  {isOpen && (
+                    rows.length === 0 ? (
+                      <div className="pb-3 pl-6 text-sm text-muted">
+                        Rien de déclaré. <Link to={g.link} className="text-accent-ink hover:underline">Ajouter</Link>
+                        {g.key === "housing" && " votre loyer (nature « Virement permanent » ou « Prélèvement »)."}
+                      </div>
+                    ) : (
+                      <ul className="pb-2">
+                        {rows.map((i) => (
+                          <li key={`${i.source}-${i.id}`}>
+                            <Link to={SOURCE_LINK[i.source]} className="flex items-center justify-between gap-3 rounded-lg py-1.5 pr-1 pl-6 text-sm hover:bg-surface-2">
+                              <span className="min-w-0 truncate">
+                                {i.name}
+                                <span className="ml-2 text-xs text-muted">{i.frequency !== "monthly" ? `${eur(i.amount)} ${FREQUENCIES[i.frequency].toLowerCase()}` : RECURRING_KINDS[i.kind] ?? (i.source === "loan" ? "crédit" : "contrat")}</span>
+                              </span>
+                              <span className="num shrink-0 text-ink-2">−{eur(i.monthly)}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  )}
+                </div>
+              );
+            })}
+            <div className="flex items-center justify-between py-3">
+              <span className="font-semibold">Reste à vivre</span>
+              <span className={cx("num text-lg font-semibold", data.reste_a_vivre < 0 && "text-critical-ink")}>{eur(data.reste_a_vivre)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm text-ink-2">
+              <span>Épargne programmée ({items.filter((i) => i.group === "savings").map((i) => i.name).join(", ") || "aucune"})</span>
+              <span className="num">−{eur(b.savings)}</span>
+            </div>
+          </div>
         </Card>
 
         <Card title="Indicateurs d'endettement">

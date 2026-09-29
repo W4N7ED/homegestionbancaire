@@ -61,7 +61,7 @@ def dashboard(db: Session = Depends(get_db)):
 
 @router.get("/reste-a-vivre")
 def reste_a_vivre(db: Session = Depends(get_db)):
-    return analytics.reste_a_vivre(db)
+    return analytics.reste_a_vivre(db, details=True)
 
 
 @router.get("/forecast")
